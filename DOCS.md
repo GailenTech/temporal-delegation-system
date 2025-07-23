@@ -15,6 +15,35 @@
 - [DIARY.md](docs/DIARY.md) - Diario de desarrollo con progreso diario y decisiones técnicas
 - [AUTHENTICATION_DESIGN.md](docs/AUTHENTICATION_DESIGN.md) - Diseño del sistema de autenticación y autorización
 
+## 🤖 Arquitecturas Avanzadas de Temporal.io
+
+- **[ADVANCED_WORKFLOW_VERSIONING.md](docs/ADVANCED_WORKFLOW_VERSIONING.md)** - 📈 **Estrategias Avanzadas de Versionado de Workflows**
+  - Caso de estudio completo: Sistema de Revisión Automatizada
+  - Implementación con GetVersion() API para compatibility
+  - Worker Versioning con Build IDs para zero-downtime deployments
+  - Feature flags dinámicas y control runtime
+  - Testing multi-versión y replay compatibility
+  - Monitoreo y observabilidad avanzada
+  - Scripts de deployment selectivo y rollback automático
+
+- **[DYNAMIC_WORKFLOW_DEPLOYMENT.md](docs/DYNAMIC_WORKFLOW_DEPLOYMENT.md)** - 🚀 **Despliegue Dinámico y Generación Runtime**
+  - Deployment sin reinicio del sistema con control granular de usuarios
+  - Routing selectivo por departamento/usuario/porcentaje
+  - API REST para control dinámico en tiempo real
+  - Generación dinámica de workflows via agentes IA
+  - Template-based generation y compilación runtime
+  - LLM integration para chatbot de creación de workflows
+  - Análisis de viabilidad técnica y limitaciones de producción
+
+- **[AI_AGENT_PIPELINE.md](docs/AI_AGENT_PIPELINE.md)** - 🧠 **Pipeline de Agentes IA para Desarrollo Autónomo**
+  - Sistema multi-agente para desarrollo completamente autónomo
+  - Agente de Especificación: Convierte lenguaje natural en specs técnicas
+  - Agente de Código: Implementa especificaciones en código Go compilable
+  - Agente de Testing: Validación automática con tests unitarios y smoke tests
+  - Agente de Deployment: Blue/green deployment con monitoreo automático
+  - Agente de QA: Validación funcional y análisis de calidad con IA
+  - Pipeline orchestrator y API REST completa
+
 ## 🔬 Investigación Empresarial
 
 - **[ENTERPRISE_AUTHORIZATION_RESEARCH.md](docs/ENTERPRISE_AUTHORIZATION_RESEARCH.md)** - 📊 **Investigación Completa de Sistemas de Autorización Empresarial**
@@ -51,6 +80,11 @@ La documentación se mantiene en el directorio `/docs` y está organizada de la 
 - **MANUAL_TEMPORAL.md**: Manual completo con tutorial de Temporal.io ⭐ **DOCUMENTO PRINCIPAL**
 - **PLAN.md**: Contiene la arquitectura, plan de implementación por fases y consideraciones técnicas
 - **DIARY.md**: Registro cronológico de avances, decisiones y obstáculos encontrados
+
+### 🤖 Arquitecturas Avanzadas
+- **ADVANCED_WORKFLOW_VERSIONING.md**: Estrategias de versionado y deployment selectivo
+- **DYNAMIC_WORKFLOW_DEPLOYMENT.md**: Deployment dinámico y generación runtime con IA
+- **AI_AGENT_PIPELINE.md**: Pipeline de agentes IA para desarrollo autónomo
 
 ### 🔬 Investigación Empresarial
 - **ENTERPRISE_AUTHORIZATION_RESEARCH.md**: Análisis completo de sistemas de autorización escalables
