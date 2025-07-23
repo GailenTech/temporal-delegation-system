@@ -1,0 +1,273 @@
+# Production environment values for Temporal Helm chart
+global:
+  image:
+    repository: temporalio/server
+    tag: 1.22.0
+    pullPolicy: IfNotPresent
+
+server:
+  replicaCount: 3  # High availability
+  
+  # Production resource allocation
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+  
+  # Pod disruption budget
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+  
+  # Affinity to spread across nodes/zones
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values:
+              - temporal-server
+          topologyKey: kubernetes.io/hostname
+  
+  config:
+    persistence:
+      default:
+        driver: sql
+        sql:
+          driver: postgres
+          host: temporal-db-service
+          port: 5432
+          database: temporal
+          user: temporal
+          password: ${DB_PASSWORD}
+          maxConns: 100
+          maxConnLifetime: 1h
+          connectTimeout: 30s
+      
+      visibility:
+        driver: sql
+        sql:
+          driver: postgres
+          host: temporal-db-service
+          port: 5432
+          database: temporal_visibility
+          user: temporal
+          password: ${DB_PASSWORD}
+          maxConns: 50
+          maxConnLifetime: 1h
+    
+    # Production Elasticsearch configuration
+    elasticsearch:
+      version: v7
+      url:
+        scheme: https
+        host: elasticsearch-service
+        port: 9200
+        username: ${ES_USERNAME}
+        password: ${ES_PASSWORD}
+      indices:
+        visibility: temporal_visibility
+        secondary_visibility: temporal_visibility_secondary
+        
+    # Enhanced logging for production
+    log:
+      stdout: true
+      level: info
+      format: json
+    
+    # Metrics configuration
+    prometheus:
+      timerType: histogram
+      listenAddress: 0.0.0.0:9090
+      handlerPath: /metrics
+      
+    # Authorization configuration (future integration)
+    authorization:
+      jwtKeyProvider:
+        keySourceURIs:
+        - "https://your-auth-provider.com/.well-known/jwks.json"
+      defaultAuthorizer:
+        name: "default"
+        config:
+          audience: "temporal-server"
+
+# Frontend (UI) configuration
+frontend:
+  replicaCount: 2
+  service:
+    type: LoadBalancer
+    port: 8080
+    annotations:
+      cloud.google.com/load-balancer-type: "External"
+      service.beta.kubernetes.io/aws-load-balancer-ssl-cert: ${SSL_CERT_ARN}
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+
+# History service
+history:
+  replicaCount: 3
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+
+# Matching service
+matching:
+  replicaCount: 3
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 70
+
+# Worker service
+worker:
+  replicaCount: 2
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+
+# Elasticsearch cluster (3-node for HA)
+elasticsearch:
+  enabled: true
+  replicas: 3
+  minimumMasterNodes: 2
+  
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+  
+  volumeClaimTemplate:
+    accessModes: [ "ReadWriteOnce" ]
+    storageClassName: ssd
+    resources:
+      requests:
+        storage: 100Gi
+  
+  esConfig:
+    elasticsearch.yml: |
+      cluster.name: temporal-es-cluster
+      discovery.seed_hosts: "elasticsearch-master-headless"
+      cluster.initial_master_nodes: "elasticsearch-master-0,elasticsearch-master-1,elasticsearch-master-2"
+      xpack.security.enabled: true
+      xpack.security.transport.ssl.enabled: true
+      xpack.security.http.ssl.enabled: true
+      
+  # Security context
+  securityContext:
+    fsGroup: 1000
+    runAsUser: 1000
+
+# Cloud SQL Proxy with HA
+cloudSqlProxy:
+  enabled: true
+  instances:
+  - project: ${PROJECT_ID}
+    region: ${REGION}
+    instance: ${ENVIRONMENT}-temporal-db
+  
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Monitoring and observability
+serviceMonitor:
+  enabled: true
+  labels:
+    release: prometheus
+  interval: 30s
+  scrapeTimeout: 10s
+
+prometheusRule:
+  enabled: true
+  groups:
+  - name: temporal.rules
+    rules:
+    - alert: TemporalHighCPU
+      expr: rate(container_cpu_usage_seconds_total{pod=~"temporal-.*"}[5m]) > 0.8
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Temporal pod {{ $labels.pod }} has high CPU usage"
+    
+    - alert: TemporalHighMemory
+      expr: container_memory_usage_bytes{pod=~"temporal-.*"} / container_spec_memory_limit_bytes > 0.8
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Temporal pod {{ $labels.pod }} has high memory usage"
+
+# Network policies for security
+networkPolicy:
+  enabled: true
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: temporal-system
+    ports:
+    - protocol: TCP
+      port: 7233
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: temporal-web
+    ports:
+    - protocol: TCP
+      port: 8080

@@ -1,0 +1,11 @@
+2025/07/23 15:50:51 Starting Purchase Approval Web Server...
+2025/07/23 15:50:51 Connecting to Temporal at localhost:7233, namespace: default
+2025/07/23 15:50:51 INFO  No logger configured for temporal client. Created default one.
+2025/07/23 15:50:51 Web server starting on :8081
+2025/07/23 15:50:51 Visit http://localhost:8081 to access the application
+2025/07/23 15:57:22 Started workflow for request f0d76ec2-54a0-4705-bc35-04840bd72e4c (RunID: e4fc2a19-b5f5-4272-bbf3-83d6b97b18a7)
+2025/07/23 15:59:09 Started workflow for request 26bb56a0-1a12-4c08-9db6-63aca02dbdf7 (RunID: 306b6025-251b-4dd4-8343-d6a8906600ef)
+2025/07/23 16:07:01 Started workflow for request 74119f16-9437-46b3-8d01-f8697ff97230 (RunID: beba199e-6f90-4e52-9b09-44a015a0c143)
+2025/07/23 16:09:35 Started workflow for request 42005293-7f84-4361-a994-19d9c6d2e4ca (RunID: 2f98531b-9ad9-4fa6-863b-402c1fa58c70)
+2025/07/23 16:09:52 Started workflow for request f935697b-7b97-4f30-850b-41701f03a1b0 (RunID: 8e61bef6-a053-4244-b498-f8c023f9a9cd)
+2025/07/23 16:10:12 Started workflow for request 1ed3252d-2720-4a5d-9e92-14cd9b97f6d9 (RunID: 27d1d6e0-1ecc-4135-911f-8bb37e9e7a6a)

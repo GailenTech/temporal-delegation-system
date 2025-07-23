@@ -1,0 +1,208 @@
+# Google Cloud Build pipeline for Temporal Purchase Approval System
+steps:
+  # Step 1: Run tests
+  - name: 'golang:1.21'
+    entrypoint: 'bash'
+    args:
+    - '-c'
+    - |
+      cd /workspace
+      go mod download
+      go test ./...
+    env:
+    - 'GO111MODULE=on'
+    - 'CGO_ENABLED=0'
+    - 'GOOS=linux'
+
+  # Step 2: Build web server image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+    - 'build'
+    - '-t'
+    - 'gcr.io/$PROJECT_ID/temporal-purchase-web:$COMMIT_SHA'
+    - '-t'
+    - 'gcr.io/$PROJECT_ID/temporal-purchase-web:latest'
+    - '-f'
+    - 'Dockerfile.web'
+    - '.'
+
+  # Step 3: Build worker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+    - 'build'
+    - '-t'
+    - 'gcr.io/$PROJECT_ID/temporal-purchase-worker:$COMMIT_SHA'
+    - '-t'
+    - 'gcr.io/$PROJECT_ID/temporal-purchase-worker:latest'
+    - '-f'
+    - 'Dockerfile.worker'
+    - '.'
+
+  # Step 4: Push images to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/temporal-purchase-web:$COMMIT_SHA']
+  
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/temporal-purchase-web:latest']
+  
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/temporal-purchase-worker:$COMMIT_SHA']
+    
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/temporal-purchase-worker:latest']
+
+  # Step 5: Security scanning
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+    - 'beta'
+    - 'container'
+    - 'images'
+    - 'scan'
+    - 'gcr.io/$PROJECT_ID/temporal-purchase-web:$COMMIT_SHA'
+    - '--format=json'
+
+  # Step 6: Deploy to demo environment (if branch is develop)
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+    - '-c'
+    - |
+      if [[ "$BRANCH_NAME" == "develop" ]]; then
+        echo "Deploying to demo environment..."
+        
+        # Update Cloud Run services
+        gcloud run deploy demo-purchase-web \
+          --image gcr.io/$PROJECT_ID/temporal-purchase-web:$COMMIT_SHA \
+          --region us-central1 \
+          --platform managed \
+          --allow-unauthenticated \
+          --set-env-vars="ENVIRONMENT=demo,TEMPORAL_ADDRESS=temporal-server.demo.svc.cluster.local:7233" \
+          --max-instances=10 \
+          --memory=512Mi \
+          --cpu=1 \
+          --timeout=300
+        
+        gcloud run deploy demo-purchase-worker \
+          --image gcr.io/$PROJECT_ID/temporal-purchase-worker:$COMMIT_SHA \
+          --region us-central1 \
+          --platform managed \
+          --no-allow-unauthenticated \
+          --set-env-vars="ENVIRONMENT=demo,TEMPORAL_ADDRESS=temporal-server.demo.svc.cluster.local:7233" \
+          --max-instances=5 \
+          --memory=1Gi \
+          --cpu=1 \
+          --timeout=3600
+        
+        echo "Demo deployment completed successfully"
+      else
+        echo "Skipping demo deployment - not on develop branch"
+      fi
+
+  # Step 7: Deploy to staging environment (if branch is staging)
+  - name: 'gcr.io/cloud-builders/kubectl'
+    entrypoint: 'bash'
+    args:
+    - '-c'
+    - |
+      if [[ "$BRANCH_NAME" == "staging" ]]; then
+        echo "Deploying to staging environment..."
+        
+        # Configure kubectl for staging cluster
+        gcloud container clusters get-credentials staging-temporal-cluster \
+          --zone us-central1-a --project $PROJECT_ID
+        
+        # Update Helm deployment
+        helm upgrade --install temporal-staging \
+          ./helm/temporal-server \
+          --namespace temporal-staging \
+          --create-namespace \
+          --values ./helm/temporal-server/values-staging.yaml \
+          --set server.image.tag=$COMMIT_SHA \
+          --set global.environment=staging \
+          --wait --timeout=10m
+        
+        # Update Cloud Run services with new images
+        gcloud run deploy staging-purchase-web \
+          --image gcr.io/$PROJECT_ID/temporal-purchase-web:$COMMIT_SHA \
+          --region us-central1 \
+          --platform managed \
+          --allow-unauthenticated \
+          --set-env-vars="ENVIRONMENT=staging"
+        
+        echo "Staging deployment completed successfully"
+      else
+        echo "Skipping staging deployment - not on staging branch"
+      fi
+
+  # Step 8: Run integration tests (staging only)
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+    - '-c'
+    - |
+      if [[ "$BRANCH_NAME" == "staging" ]]; then
+        echo "Running integration tests..."
+        
+        # Wait for services to be ready
+        sleep 60
+        
+        # Get staging URL
+        STAGING_URL=$(gcloud run services describe staging-purchase-web \
+          --region us-central1 --format="value(status.url)")
+        
+        # Run integration tests
+        docker run --rm \
+          -e STAGING_URL=$STAGING_URL \
+          -e PROJECT_ID=$PROJECT_ID \
+          gcr.io/$PROJECT_ID/temporal-purchase-web:$COMMIT_SHA \
+          /bin/bash -c "cd /app && go test -tags=integration ./tests/integration/..."
+        
+        echo "Integration tests completed successfully"
+      else
+        echo "Skipping integration tests - not on staging branch"
+      fi
+
+  # Step 9: Notify deployment status
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+    - '-c'
+    - |
+      echo "Build completed successfully for commit $COMMIT_SHA"
+      echo "Branch: $BRANCH_NAME"
+      echo "Images built:"
+      echo "  - gcr.io/$PROJECT_ID/temporal-purchase-web:$COMMIT_SHA"
+      echo "  - gcr.io/$PROJECT_ID/temporal-purchase-worker:$COMMIT_SHA"
+      
+      # Send notification to Slack/Teams (if configured)
+      if [[ -n "$_SLACK_WEBHOOK" ]]; then
+        curl -X POST -H 'Content-type: application/json' \
+          --data "{\"text\":\"✅ Temporal Purchase Approval: Build completed for $BRANCH_NAME ($COMMIT_SHA)\"}" \
+          $_SLACK_WEBHOOK
+      fi
+
+# Configuration
+options:
+  env:
+  - 'GOPATH=/go'
+  - 'GOPROXY=https://proxy.golang.org'
+  - 'GO111MODULE=on'
+  
+  # Use high-CPU machine for faster builds
+  machineType: 'E2_HIGHCPU_8'
+  
+  # Enable Docker layer caching
+  substitution_option: 'ALLOW_LOOSE'
+
+# Build triggers
+substitutions:
+  _SLACK_WEBHOOK: ''  # Set in trigger configuration
+
+# Store artifacts
+artifacts:
+  images:
+  - 'gcr.io/$PROJECT_ID/temporal-purchase-web:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/temporal-purchase-worker:$COMMIT_SHA'
+
+# Build timeout (30 minutes)
+timeout: 1800s

@@ -1,0 +1,30 @@
+system.forceSearchAttributesCacheRefreshOnRead:
+  - value: true # Dev only flag, please don't turn on in production.
+    constraints: {}
+
+system.enableLoggerRateLimiting:
+  - value: false
+
+frontend.enableWorkerVersioningDataAPIs:
+  - value: true
+    constraints: {}
+
+frontend.enableWorkerVersioningWorkflowAPIs:
+  - value: true
+    constraints: {}
+
+worker.buildIdScavengerEnabled:
+  - value: true
+    constraints: {}
+
+system.enableActivityLocalDispatchByDomain:
+  - value: true
+    constraints: {}
+
+frontend.enableUpdateWorkflowExecution:
+  - value: true
+    constraints: {}
+
+frontend.enableUpdateWorkflowExecutionAsyncAccepted:
+  - value: true
+    constraints: {}

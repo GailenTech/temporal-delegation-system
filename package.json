@@ -1,0 +1,40 @@
+{
+  "name": "temporal-purchase-approval",
+  "version": "1.0.0",
+  "description": "Sistema de aprobación de compras usando Temporal.io con delegaciones",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:ui": "playwright test --ui",
+    "test:report": "playwright show-report",
+    "test:install": "playwright install",
+    "test:install-deps": "playwright install-deps",
+    "test:setup": "npm run test:install && npm run test:install-deps",
+    "dev:all": "make dev",
+    "dev:web": "go run cmd/web/main.go",
+    "dev:worker": "go run cmd/worker/main.go",
+    "build": "go build -o bin/web cmd/web/main.go && go build -o bin/worker cmd/worker/main.go",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "temporal:up": "make temporal-up",
+    "temporal:down": "make temporal-down"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "keywords": [
+    "temporal",
+    "workflow",
+    "go",
+    "delegations",
+    "approval",
+    "e2e-testing",
+    "playwright"
+  ],
+  "author": "Temporal Workflow Team",
+  "license": "MIT"
+}

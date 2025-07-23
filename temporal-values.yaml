@@ -1,0 +1,48 @@
+server:
+  replicaCount: 1
+  
+cassandra:
+  enabled: true
+  replicaCount: 1
+  host: temporal-cassandra.temporal.svc.cluster.local
+  port: 9042
+  keyspace: temporal
+  visibilityKeyspace: temporal_visibility
+  user: user
+  password: password
+  
+  persistence:
+    enabled: true
+    size: 10Gi
+
+elasticsearch:
+  enabled: false
+
+prometheus:
+  enabled: false
+
+grafana:
+  enabled: false
+
+web:
+  enabled: true
+  replicaCount: 1
+  
+admintools:
+  enabled: true
+
+# Ensure proper service discovery
+schema:
+  setup:
+    enabled: true
+  update:
+    enabled: true
+
+# Use reduced resource requests for demo
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi

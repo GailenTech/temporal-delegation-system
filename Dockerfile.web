@@ -1,0 +1,32 @@
+# Multi-stage build for web application
+FROM golang:1.21-alpine AS builder
+
+# Install ca-certificates for SSL
+RUN apk --no-cache add ca-certificates git
+
+WORKDIR /app
+
+# Copy go mod files
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the web application
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o web ./cmd/web
+
+# Final stage with minimal image
+FROM gcr.io/distroless/static-debian11
+
+# Copy ca-certificates from builder
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
+# Copy binary
+COPY --from=builder /app/web /app/web
+
+# Expose port
+EXPOSE 8081
+
+# Run the binary
+ENTRYPOINT ["/app/web"]
